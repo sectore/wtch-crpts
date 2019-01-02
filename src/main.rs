@@ -50,6 +50,6 @@ fn main() {
         .values_of("cryptocurrencies")
         .expect("One or more cryptocurrency has to be set")
         .collect();
-    let env = app::Env::new(&coinmarketcap_key, &cryptos, &fiat, is_development);
+    let env = app::Env::new(coinmarketcap_key, cryptos, fiat, is_development);
     app::WatchCryptos::new(env).run();
 }
