@@ -11,9 +11,7 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-use serde::Deserialize;
-use serde::Deserializer;
-use serde_json::{from_value, Value};
+use std::collections::HashMap;
 
 // FIAT list supported by coinmarketcap
 // https://coinmarketcap.com/api/documentation/v1/#section/Standards-and-Conventions
@@ -79,7 +77,7 @@ impl Coins {
 impl Iterator for Coins {
     type Item = Coin;
     fn next(&mut self) -> Option<Coin> {
-        self.index = if self.index + 1 >= self.list.len() {
+        self.index = if self.index < self.list.len() - 1 {
             self.index + 1
         } else {
             0
@@ -128,7 +126,7 @@ impl<'a> WatchCryptos<'a> {
     fn get_current_coin_detail(&mut self) {
         if let Some(coins) = &self.coins {
             if let Some(item) = &coins.current() {
-                let result = fetch_quote(
+                let result = fetch_detail(
                     &self.env.coinmarketcap_key,
                     &item.symbol,
                     &self.env.fiat_symbol.to_string(),
@@ -142,15 +140,8 @@ impl<'a> WatchCryptos<'a> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Coin {
-    id: i32,
-    name: String,
-    symbol: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CoinDetail {
     id: i32,
     name: String,
     symbol: String,
@@ -158,65 +149,150 @@ pub struct CoinDetail {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ListData {
-    data: Vec<Coin>,
+    #[serde(rename = "data")]
+    coins: Vec<Coin>,
 }
 
+pub type CoinDetailMap = HashMap<String, CoinDetail>;
+
+#[derive(Serialize, Debug, Deserialize, PartialEq)]
+pub struct QuoteData {
+    #[serde(rename = "data")]
+    details: CoinDetailMap,
+}
+
+pub type QuoteMap = HashMap<String, Quote>;
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct CoinDetail {
+    id: i32,
+    name: String,
+    symbol: String,
+    #[serde(rename = "quote")]
+    quotes: QuoteMap,
+}
+
+#[derive(Serialize, Debug, Deserialize, Clone, PartialEq)]
+pub struct Quote {
+    price: f32,
+    volume_24h: f32,
+}
 // const URL_MAP: &str = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/map";
 const URL_MAP: &str = "http://localhost:3000/map";
 
-pub fn fetch_coins(key: &String) -> Result<Vec<Coin>, Box<std::error::Error>> {
-    info!("coins:");
+pub type ApiError = Box<std::error::Error>;
+pub type ApiResult<T> = Result<T, ApiError>;
+
+pub fn fetch_coins(key: &String) -> ApiResult<Vec<Coin>> {
+    info!("fetch coins");
 
     let client = reqwest::Client::new();
     let url = Url::parse_with_params(URL_MAP, &[("start", "1"), ("limit", "5000")])?;
-    let list: ListData = client
+    let data: ListData = client
         .get(url)
         .header("X-CMC_PRO_API_KEY", key.clone())
         .send()?
         .json()?;
 
-    Ok(list.data)
+    Ok(data.coins)
 }
 
 // const URL_QUOTES: &str = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest";
 const URL_QUOTES: &str = "http://localhost:3000/quotes";
 
-#[derive(Serialize, Debug, Deserialize)]
-pub struct QuoteData {
-    #[serde(rename = "data", deserialize_with = "deserialize_coindetail")]
-    detail: CoinDetail,
-    // TODO(sectore) Deserialize quote
-    // quote: Qutoe
-}
-
-pub fn fetch_quote(key: &String, symbol: &String, fiat: &String) -> Result<CoinDetail, Box<std::error::Error>> {
-    info!("quote:");
+pub fn fetch_detail(key: &String, symbol: &String, fiat: &String) -> ApiResult<CoinDetail> {
+    info!("fetch detail");
 
     let client = reqwest::Client::new();
     let url = Url::parse_with_params(URL_QUOTES, &[("symbol", &symbol), ("convert", &fiat)])?;
-    let list: QuoteData = client
+    let data: QuoteData = client
         .get(url)
         .header("X-CMC_PRO_API_KEY", key.clone())
         .send()?
         .json()?;
 
-    info!("list: {:?}", list);
-    Ok(list.detail)
+    info!("details: {:?}", data);
+    let details = data.details.get(&symbol.clone()).ok_or("Could not get detail from")?;
+
+    Ok(details.clone())
 }
 
-fn deserialize_coindetail<'de, D>(d: D) -> Result<CoinDetail, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let json: Value = Deserialize::deserialize(d)?;
-    // We don't know the key of the map (it can be "BTC" or any other crypto symbol),
-    // but we do know it's the first value we are interested in
-    if let Some(detail) = json.as_object().unwrap().values().nth(0) {
-        Ok(from_value(detail.clone()).unwrap())
-    } else {
-        Err(serde::de::Error::custom(format!(
-            "Error to parse crypto detail from {}",
-            json
-        )))
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn deserialize_coindetails() {
+        let json = json!({
+        "data": {
+            "BTC": {
+                "id": 1,
+                "name": "Bitcoin",
+                "symbol": "BTC",
+                "quote": {
+                    "EUR": {
+                        "price": 1.0,
+                        "volume_24h": 2.0,
+                    }
+                }
+            }
+        }});
+        let result: QuoteData = serde_json::from_value(json).unwrap();
+        let quote: Quote = Quote {
+            price: 1.0,
+            volume_24h: 2.0,
+        };
+        let mut quotes: QuoteMap = HashMap::new();
+        quotes.insert("EUR".to_string(), quote.clone());
+        let detail: CoinDetail = CoinDetail {
+            id: 1,
+            name: "Bitcoin".to_string(),
+            symbol: "BTC".to_string(),
+            quotes,
+        };
+        let mut details: CoinDetailMap = HashMap::new();
+        details.insert("BTC".to_string(), detail.clone());
+        let expected: QuoteData = QuoteData { details };
+
+        assert_eq!(result, expected)
+    }
+
+    fn mock_coin(id: i32) -> Coin {
+        Coin {
+            id,
+            name: "any-coin".to_string(),
+            symbol: "any-symbol".to_string(),
+        }
+    }
+
+    #[test]
+    fn coins_next() {
+        let coin_a: Coin = mock_coin(0);
+        let coin_b: Coin = mock_coin(1);
+        let coin_c: Coin = mock_coin(2);
+        let mut coins: Coins = Coins::new(vec![coin_a.clone(), coin_b.clone(), coin_c.clone()]);
+        assert_eq!(coins.current(), Some(coin_a.clone()));
+        coins.next();
+        assert_eq!(coins.current(), Some(coin_b.clone()));
+        coins.next();
+        assert_eq!(coins.current(), Some(coin_c.clone()));
+        coins.next();
+        assert_eq!(coins.current(), Some(coin_a.clone()))
+    }
+    #[test]
+    fn coins_prev() {
+        let coin_a: Coin = mock_coin(0);
+        let coin_b: Coin = mock_coin(1);
+        let coin_c: Coin = mock_coin(2);
+        let mut coins: Coins = Coins::new(vec![coin_a.clone(), coin_b.clone(), coin_c.clone()]);
+        assert_eq!(coins.current(), Some(coin_a.clone()));
+        coins.prev();
+        assert_eq!(coins.current(), Some(coin_c.clone()));
+        coins.prev();
+        assert_eq!(coins.current(), Some(coin_b.clone()));
+        coins.prev();
+        assert_eq!(coins.current(), Some(coin_a.clone()))
     }
 }
