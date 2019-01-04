@@ -13,6 +13,9 @@ extern crate serde_json;
 
 use std::collections::HashMap;
 
+#[macro_use]
+extern crate derive_builder;
+
 // FIAT list supported by coinmarketcap
 // https://coinmarketcap.com/api/documentation/v1/#section/Standards-and-Conventions
 pub const FIAT_LIST: [&str; 93] = [
@@ -140,10 +143,12 @@ impl<'a> WatchCryptos<'a> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Builder, Default)]
+#[builder(default, setter(into))]
 pub struct Coin {
     id: i32,
     name: String,
+    #[builder(setter(into))]
     symbol: String,
 }
 
@@ -259,19 +264,11 @@ mod tests {
         assert_eq!(result, expected)
     }
 
-    fn mock_coin(id: i32) -> Coin {
-        Coin {
-            id,
-            name: "any-coin".to_string(),
-            symbol: "any-symbol".to_string(),
-        }
-    }
-
     #[test]
     fn coins_next() {
-        let coin_a: Coin = mock_coin(0);
-        let coin_b: Coin = mock_coin(1);
-        let coin_c: Coin = mock_coin(2);
+        let coin_a: Coin = CoinBuilder::default().id(0).build().unwrap();
+        let coin_b: Coin = CoinBuilder::default().id(1).build().unwrap();
+        let coin_c: Coin = CoinBuilder::default().id(2).build().unwrap();
         let mut coins: Coins = Coins::new(vec![coin_a.clone(), coin_b.clone(), coin_c.clone()]);
         assert_eq!(coins.current(), Some(coin_a.clone()));
         coins.next();
@@ -283,9 +280,9 @@ mod tests {
     }
     #[test]
     fn coins_prev() {
-        let coin_a: Coin = mock_coin(0);
-        let coin_b: Coin = mock_coin(1);
-        let coin_c: Coin = mock_coin(2);
+        let coin_a: Coin = CoinBuilder::default().id(0).build().unwrap();
+        let coin_b: Coin = CoinBuilder::default().id(1).build().unwrap();
+        let coin_c: Coin = CoinBuilder::default().id(2).build().unwrap();
         let mut coins: Coins = Coins::new(vec![coin_a.clone(), coin_b.clone(), coin_c.clone()]);
         assert_eq!(coins.current(), Some(coin_a.clone()));
         coins.prev();
