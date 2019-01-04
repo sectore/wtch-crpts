@@ -14,7 +14,10 @@ fn main() {
     env_logger::init();
 
     dotenv().ok();
-    let coinmarketcap_key = env::var("COINMARKETCAP_KEY").expect("COINMARKETCAP_KEY has to be set in .env");
+    const ENV_COINMARKETCAP_KEY: &str = "COINMARKETCAP_KEY";
+    let coinmarketcap_key = env::var(ENV_COINMARKETCAP_KEY.to_string()).map_err(|_| app::AppError::Env {
+        name: ENV_COINMARKETCAP_KEY.to_string(),
+    });
 
     let matches = App::new("WTCH-CRPTS")
         .about("Watch crypto's in your terminal")
@@ -50,6 +53,12 @@ fn main() {
         .values_of("cryptocurrencies")
         .expect("One or more cryptocurrency has to be set")
         .collect();
-    let env = app::Env::new(coinmarketcap_key, cryptos, fiat, is_development);
-    app::WatchCryptos::new(env).run();
+
+    let app =
+        coinmarketcap_key.map(|key| app::WatchCryptos::new(app::Env::new(key, cryptos, fiat, is_development)).run());
+
+    match app {
+        Ok(_) => (),
+        Err(e) => eprintln!("Ooops, something went wrong to run the app: {}", e),
+    }
 }
