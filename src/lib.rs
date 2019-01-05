@@ -1,24 +1,22 @@
 extern crate reqwest;
-use reqwest::Url;
-
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-
+extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-
-extern crate serde;
 extern crate serde_json;
-
 #[macro_use]
 extern crate derive_builder;
-
 #[macro_use]
 extern crate failure;
 
+use dotenv::dotenv;
+use reqwest::Url;
 use std::collections::HashMap;
+use std::env;
 use std::error::Error;
+use std::sync::{Once, ONCE_INIT};
 
 // FIAT list supported by coinmarketcap
 // https://coinmarketcap.com/api/documentation/v1/#section/Standards-and-Conventions
@@ -30,6 +28,17 @@ pub const FIAT_LIST: [&str; 93] = [
     "PKR", "PAB", "PEN", "PHP", "PLN", "GBP", "QAR", "RON", "RUB", "SAR", "RSD", "SGD", "ZAR", "KRW", "SSP", "VES",
     "LKR", "SEK", "CHF", "THB", "TTD", "TND", "TRY", "UGX", "UAH", "AED", "UYU", "UZS", "VND",
 ];
+
+static INIT_ENV: Once = ONCE_INIT;
+pub const ENV_COINMARKETCAP_KEY: &str = "COINMARKETCAP_KEY";
+pub const HEADER_COINMARKETCAP_KEY: &str = "X-CMC_PRO_API_KEY";
+
+pub fn get_env(key: &str) -> Result<String, AppError> {
+    INIT_ENV.call_once(|| {
+        dotenv().ok();
+    });
+    env::var(key.to_string()).map_err(|_| AppError::Env { name: key.to_string() })
+}
 
 #[derive(Debug, Fail)]
 pub enum AppError {
@@ -61,21 +70,14 @@ impl From<reqwest::Error> for AppError {
 
 #[derive(Debug)]
 pub struct Env<'a> {
-    coinmarketcap_key: String,
     fiat_symbol: &'a str,
     crypto_symbols: Vec<&'a str>,
     is_development: bool,
 }
 
 impl<'a> Env<'a> {
-    pub fn new(
-        coinmarketcap_key: String,
-        crypto_symbols: Vec<&'a str>,
-        fiat_symbol: &'a str,
-        is_development: bool,
-    ) -> Self {
+    pub fn new(crypto_symbols: Vec<&'a str>, fiat_symbol: &'a str, is_development: bool) -> Self {
         Env {
-            coinmarketcap_key,
             crypto_symbols,
             fiat_symbol,
             is_development,
@@ -141,14 +143,10 @@ impl<'a> WatchCryptos<'a> {
 
     pub fn run(&mut self) -> Result<(), AppError> {
         let coins = self.get_coins()?;
-        info!("run {:?} coins", &coins);
         self.coins = Some(Coins::new(coins));
         let detail = self.get_current_coin_detail()?;
-        info!("run {:?} detail", &detail);
         self.coin_detail = Some(detail);
-
         info!("{:?}", self);
-
         Ok(())
     }
 
@@ -157,13 +155,11 @@ impl<'a> WatchCryptos<'a> {
     }
 
     fn get_coins(&mut self) -> Result<CoinList, AppError> {
-        let result = fetch_coins(&self.env.coinmarketcap_key)?;
+        let result = fetch_coins()?;
         let coins: CoinList = result
             .into_iter()
             .filter(|coin| self.env.crypto_symbols.contains(&coin.symbol.as_str()))
             .collect();
-
-        info!("coins {:?}", &coins);
         if coins.is_empty() {
             // Paaaanic.... Just because we do need at least one supported crypto to run the app
             panic!(format!("Cryptocurrencies {:?} are not supported", coins))
@@ -174,7 +170,7 @@ impl<'a> WatchCryptos<'a> {
 
     fn get_current_coin_detail(&mut self) -> Result<CoinDetail, AppError> {
         if let Some(coin) = &self.current_coin() {
-            fetch_detail(&self.env.coinmarketcap_key, &coin.symbol)
+            fetch_detail(&coin.symbol, &self.env.fiat_symbol)
         } else {
             Err(AppError::CurrentCoinMissing())
         }
@@ -226,17 +222,20 @@ const URL_MAP: &str = "http://localhost:3000/map";
 pub type ApiError = Box<Error>;
 pub type ApiResult<T> = Result<T, ApiError>;
 
-pub fn fetch_coins(key: &String) -> Result<CoinList, AppError> {
+pub fn fetch_coins() -> Result<CoinList, AppError> {
     info!("fetch coins");
 
     let client = reqwest::Client::new();
+    // TODO: Parameterize "limit"
     let params = [("start", "1"), ("limit", "5000")];
     let url = Url::parse_with_params(URL_MAP, &params).map_err(AppError::ApiParseUrl)?;
-    info!("url {:?}", &url);
+    let key = get_env(ENV_COINMARKETCAP_KEY)?;
+
+    info!("fetch coins url {}", url);
 
     client
         .get(url)
-        .header("X-CMC_PRO_API_KEY", key.clone())
+        .header(HEADER_COINMARKETCAP_KEY, key)
         .send()
         .map_err(AppError::ApiRequest)?
         .json()
@@ -247,17 +246,18 @@ pub fn fetch_coins(key: &String) -> Result<CoinList, AppError> {
 // const URL_QUOTES: &str = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest";
 const URL_QUOTES: &str = "http://localhost:3000/quotes";
 
-pub fn fetch_detail(key: &String, symbol: &String) -> Result<CoinDetail, AppError> {
-    info!("fetch detail");
-
+pub fn fetch_detail(symbol: &String, fiat: &str) -> Result<CoinDetail, AppError> {
     let client = reqwest::Client::new();
-    let params = [("start", "1"), ("limit", "5000")];
+    let ref fiat_r = fiat.to_string();
+    let params = [("symbol", &symbol), ("convert", &fiat_r)];
     let url = Url::parse_with_params(URL_QUOTES, &params).map_err(AppError::ApiParseUrl)?;
-    info!("url2 {:?}", &url);
+    let key: String = get_env(ENV_COINMARKETCAP_KEY)?;
+
+    info!("fetch detail url {}", url);
 
     let data: QuoteData = client
         .get(url)
-        .header("X-CMC_PRO_API_KEY", key.clone())
+        .header(HEADER_COINMARKETCAP_KEY, key.clone())
         .send()
         .map_err(AppError::ApiRequest)?
         .json()
@@ -265,9 +265,9 @@ pub fn fetch_detail(key: &String, symbol: &String) -> Result<CoinDetail, AppErro
 
     data.details
         .get(&symbol.clone())
-        .ok_or(AppError::ApiParseMap { key: symbol.clone() })
         // Clone detail to be "dereferenced"
-        .map(|d| d.clone())
+        .map(|detail| detail.clone())
+        .ok_or(AppError::ApiParseMap { key: symbol.clone() })
 }
 
 #[cfg(test)]
