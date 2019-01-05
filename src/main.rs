@@ -3,7 +3,7 @@ extern crate dotenv;
 extern crate wtch_crpts;
 
 use clap::{App, Arg};
-use wtch_crpts as app;
+use wtch_crpts as wc;
 
 fn main() {
     env_logger::init();
@@ -25,7 +25,7 @@ fn main() {
                 .short("f")
                 .long("fiat")
                 .default_value("USD")
-                .possible_values(&app::FIAT_LIST),
+                .possible_values(&wc::app::constants::FIAT_LIST),
             Arg::with_name("dev")
                 .help("Fiat currency for rating cryptocurrencies, e.g. EUR")
                 .short("d")
@@ -43,7 +43,7 @@ fn main() {
         .expect("One or more cryptocurrency has to be set")
         .collect();
 
-    let mut app = app::WatchCryptos::new(app::Env::new(cryptos, fiat, is_development));
+    let mut app = wc::WatchCryptos::new(wc::app::env::Env::new(cryptos, fiat, is_development));
     match app.run() {
         Ok(_) => println!("App is running successfully ..."),
         Err(e) => eprintln!("Ooops, something went wrong: {}", e),
