@@ -110,15 +110,15 @@ mod tests {
             volume_24h: 2.0,
         };
         let mut quotes: QuoteMap = HashMap::new();
-        quotes.insert("EUR".to_string(), quote.clone());
+        quotes.insert("EUR".into(), quote.clone());
         let detail: CoinDetail = CoinDetail {
             id: 1,
-            name: "Bitcoin".to_string(),
-            symbol: "BTC".to_string(),
+            name: "Bitcoin".into(),
+            symbol: "BTC".into(),
             quotes,
         };
         let mut details: CoinDetailMap = HashMap::new();
-        details.insert("BTC".to_string(), detail.clone());
+        details.insert("BTC".into(), detail.clone());
         let expected: QuoteData = QuoteData { details };
 
         assert_eq!(result, expected)

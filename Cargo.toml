@@ -1,5 +1,6 @@
 [package]
 name = "wtch-crpts"
+description = "Watch crypto's in your terminal"
 version = "0.1.0"
 authors = ["jk <email@jkrause.io>"]
 edition = "2018"

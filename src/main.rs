@@ -1,3 +1,4 @@
+#[macro_use]
 extern crate clap;
 extern crate dotenv;
 extern crate wtch_crpts;
@@ -9,9 +10,9 @@ fn main() {
     env_logger::init();
 
     let matches = App::new("WTCH-CRPTS")
-        .about("Watch crypto's in your terminal")
-        .author("jk <email@jkrause.io>")
-        .version("0.1")
+        .about(crate_description!())
+        .author(crate_authors!())
+        .version(crate_version!())
         .args(&[
             Arg::with_name("cryptocurrencies")
                 .help("Cryptocurrency to watch, e.g. BTC. Multiple values can be added by using ',' as a delimiter, eg. BTC,ETH,LTC")
