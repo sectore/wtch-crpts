@@ -1,10 +1,22 @@
 #[macro_use]
 extern crate clap;
 extern crate dotenv;
-extern crate wtch_crpts;
 
+extern crate reqwest;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
+#[macro_use]
+extern crate derive_builder;
+#[macro_use]
+extern crate failure;
+
+mod app;
 use clap::{App, Arg};
-use wtch_crpts as wc;
 
 fn main() {
     env_logger::init();
@@ -26,7 +38,7 @@ fn main() {
                 .short("f")
                 .long("fiat")
                 .default_value("USD")
-                .possible_values(&wc::app::constants::FIAT_LIST),
+                .possible_values(&app::constants::FIAT_LIST),
             Arg::with_name("dev")
                 .help("Fiat currency for rating cryptocurrencies, e.g. EUR")
                 .short("d")
@@ -44,7 +56,7 @@ fn main() {
         .expect("One or more cryptocurrency has to be set")
         .collect();
 
-    let mut app = wc::WatchCryptos::new(wc::app::env::Env::new(cryptos, fiat, is_development));
+    let mut app = app::App::new(app::env::Env::new(cryptos, fiat, is_development));
     match app.run() {
         Ok(_) => println!("App is running successfully ..."),
         Err(e) => eprintln!("Ooops, something went wrong: {}", e),
