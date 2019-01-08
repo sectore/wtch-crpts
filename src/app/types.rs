@@ -1,4 +1,9 @@
 use std::collections::HashMap;
+use termion::raw::RawTerminal;
+use termion::screen::AlternateScreen;
+use tui::backend::TermionBackend;
+use tui::Terminal;
+use std::io::Stdout;
 
 use super::errors::AppError;
 
@@ -82,6 +87,11 @@ pub struct Quote {
     pub volume_24h: f32,
 }
 
+pub type AppResult<T> = Result<T, AppError>;
+
+pub type AppTerminalBackend = TermionBackend<AlternateScreen<RawTerminal<Stdout>>>;
+pub type AppTerminal = Terminal<AppTerminalBackend>;
+
 #[cfg(test)]
 mod tests {
 
@@ -153,5 +163,3 @@ mod tests {
         assert_eq!(coins.current(), Some(coin_a.clone()))
     }
 }
-
-pub type AppResult<T> = Result<T, AppError>;

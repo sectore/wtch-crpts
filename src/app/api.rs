@@ -36,7 +36,7 @@ pub fn fetch_detail(symbol: &String, fiat: &str) -> AppResult<CoinDetail> {
 
         let data: QuoteData = client
                 .get(url)
-                .header(HEADER_COINMARKETCAP_KEY, key.clone())
+                .header(HEADER_COINMARKETCAP_KEY, key.to_owned())
                 .send()
                 .map_err(AppError::ApiRequest)?
                 .json()
@@ -45,5 +45,5 @@ pub fn fetch_detail(symbol: &String, fiat: &str) -> AppResult<CoinDetail> {
         data.details
                 .get(&symbol.clone())
                 .map(|detail| detail.to_owned())
-                .ok_or(AppError::ApiParseMap { key: symbol.clone() })
+                .ok_or(AppError::ApiParseMap { key: symbol.to_owned() })
 }

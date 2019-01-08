@@ -56,7 +56,7 @@ fn main() {
         .expect("One or more cryptocurrency has to be set")
         .collect();
 
-    let mut app = app::App::new(app::env::Env::new(cryptos, fiat, is_development));
+    let mut app = app::App::new(app::config::Config::new(cryptos, fiat, is_development));
     match app.run() {
         Ok(_) => println!("App is running successfully ..."),
         Err(e) => eprintln!("Ooops, something went wrong: {}", e),

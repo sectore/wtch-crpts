@@ -12,6 +12,8 @@ pub enum AppError {
     ApiParseMap { key: String },
     #[fail(display = "Current coin does not exist")]
     CurrentCoinMissing(),
+    #[fail(display = "Terminal IO error {:?}", _0)]
+    Terminal(#[cause] std::io::Error),
 }
 
 impl From<serde_json::Error> for AppError {

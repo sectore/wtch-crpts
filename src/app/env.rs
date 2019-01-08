@@ -14,20 +14,3 @@ pub fn get_env(key: &str) -> Result<String, errors::AppError> {
     });
     env::var(key.to_string()).map_err(|_| errors::AppError::Env { name: key.into() })
 }
-
-#[derive(Debug)]
-pub struct Env<'a> {
-    pub fiat_symbol: &'a str,
-    pub crypto_symbols: Vec<&'a str>,
-    pub is_development: bool,
-}
-
-impl<'a> Env<'a> {
-    pub fn new(crypto_symbols: Vec<&'a str>, fiat_symbol: &'a str, is_development: bool) -> Self {
-        Env {
-            crypto_symbols,
-            fiat_symbol,
-            is_development,
-        }
-    }
-}
