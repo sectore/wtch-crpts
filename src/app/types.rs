@@ -1,9 +1,9 @@
 use std::collections::HashMap;
+use std::io::Stdout;
 use termion::raw::RawTerminal;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
 use tui::Terminal;
-use std::io::Stdout;
 
 use super::errors::AppError;
 
@@ -38,11 +38,7 @@ impl Coins {
 impl Iterator for Coins {
     type Item = Coin;
     fn next(&mut self) -> Option<Coin> {
-        self.index = if self.index < self.list.len() - 1 {
-            self.index + 1
-        } else {
-            0
-        };
+        self.index = (self.index + 1) % self.list.len();
         self.current()
     }
 }
