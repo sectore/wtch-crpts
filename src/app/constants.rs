@@ -1,3 +1,4 @@
+// TODO: Parameterize live / local endpoints
 // pub const URL_QUOTES: &str = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest";
 pub const URL_QUOTES: &str = "http://localhost:3000/quotes";
 

@@ -33,6 +33,16 @@ impl Coins {
         };
         self.current()
     }
+
+    pub fn get_symbols(&self) -> Vec<String> {
+        self.list.clone().into_iter().map(|coin| coin.symbol).collect()
+    }
+}
+
+impl Default for Coins {
+    fn default() -> Coins {
+        Coins { index: 0, list: vec![] }
+    }
 }
 
 impl Iterator for Coins {

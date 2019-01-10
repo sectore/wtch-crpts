@@ -10,7 +10,7 @@ pub fn fetch_coins() -> AppResult<CoinList> {
 
         let client = reqwest::Client::new();
         // TODO: Parameterize "limit"
-        let params = [("start", "1"), ("limit", "5000")];
+        let params = [("start", "1"), ("limit", "20")];
         let url = Url::parse_with_params(URL_MAP, &params).map_err(AppError::ApiParseUrl)?;
         let key = get_env(ENV_COINMARKETCAP_KEY)?;
 

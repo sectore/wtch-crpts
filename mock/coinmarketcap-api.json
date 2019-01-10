@@ -55905,6 +55905,24 @@
                         "last_updated": "2019-01-01T15:40:00.000Z"
                     }
                 }
+            },
+            "LTC": {
+                "id": 2,
+                "name": "Litecoin",
+                "symbol": "LTC",
+                "slug": "litecoin",
+                "last_updated": "2019-01-01T15:39:22.000Z",
+                "quote": {
+                    "EUR": {
+                        "price": 1,
+                        "volume_24h": 22,
+                        "percent_change_1h": -1,
+                        "percent_change_24h": -2,
+                        "percent_change_7d": -3,
+                        "market_cap": 44,
+                        "last_updated": "2019-01-01T15:40:00.000Z"
+                    }
+                }
             }
         }
     }

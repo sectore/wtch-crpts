@@ -11,6 +11,8 @@ use self::config::Config;
 use self::errors::AppError;
 use self::input::{InputChannel, InputEvent};
 use self::types::{AppResult, AppTerminal, Coin, CoinDetail, CoinList, Coins};
+use termion::event::Key;
+use tui::style::{Color, Style};
 
 extern crate failure;
 extern crate termion;
@@ -23,13 +25,13 @@ use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
 use tui::layout::{Alignment, Constraint, Direction, Layout};
-use tui::widgets::{Block, Borders, Paragraph, Text, Widget};
+use tui::widgets::{Block, Borders, Paragraph, Tabs, Text, Widget};
 use tui::Terminal;
 
-#[derive(Debug)]
 pub struct App<'a> {
+    #[derive(Debug)]
     env: Config<'a>,
-    coins: Option<Coins>,
+    coins: Coins,
     coin_detail: Option<CoinDetail>,
     view_state: ViewState,
 }
@@ -45,7 +47,7 @@ impl<'a> App<'a> {
     pub fn new(env: Config<'a>) -> Self {
         App {
             env,
-            coins: None,
+            coins: Coins::default(),
             coin_detail: None,
             view_state: ViewState::Welcome,
         }
@@ -60,8 +62,8 @@ impl<'a> App<'a> {
         Ok(terminal)
     }
 
-    fn current_coin(&self) -> Option<Coin> {
-        self.coins.as_ref().and_then(|cs| cs.current())
+    fn get_current_coin(&self) -> Option<Coin> {
+        self.coins.current()
     }
 
     fn get_coins(&mut self) -> AppResult<CoinList> {
@@ -79,7 +81,7 @@ impl<'a> App<'a> {
     }
 
     fn get_current_coin_detail(&mut self) -> AppResult<CoinDetail> {
-        if let Some(coin) = &self.current_coin() {
+        if let Some(coin) = &self.get_current_coin() {
             fetch_detail(&coin.symbol, &self.env.fiat_symbol)
         } else {
             Err(AppError::CurrentCoinMissing())
@@ -88,7 +90,7 @@ impl<'a> App<'a> {
 
     fn render(&mut self, terminal: &mut AppTerminal) -> AppResult<()> {
         let size = terminal.size().map_err(AppError::Terminal)?;
-        &terminal
+        terminal
             .draw(|mut f| {
                 Block::default()
                     .title("wtch-crpts")
@@ -97,11 +99,18 @@ impl<'a> App<'a> {
 
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+                    .constraints(
+                        [
+                            Constraint::Percentage(10),
+                            Constraint::Percentage(10),
+                            Constraint::Min(0),
+                        ]
+                        .as_ref(),
+                    )
                     .split(size);
 
-                let block = Block::default().borders(Borders::LEFT);
-                match &self.view_state {
+                let block = Block::default().borders(Borders::NONE);
+                match self.view_state {
                     ViewState::Welcome => {
                         // TODO: Create a factory to render a headline
                         Paragraph::new(vec![Text::raw("Welcome")].iter())
@@ -110,11 +119,41 @@ impl<'a> App<'a> {
                             .render(&mut f, chunks[1]);
                     }
                     ViewState::List => {
-                        // TODO: Create a factory to render a headline
-                        Paragraph::new(vec![Text::raw("List")].iter())
-                            .block(block.clone())
-                            .alignment(Alignment::Left)
-                            .render(&mut f, chunks[1]);
+                        if self.coins.list.is_empty() {
+                            Paragraph::new(vec![Text::raw("No coins available")].iter())
+                                .block(block.clone())
+                                .alignment(Alignment::Left)
+                                .render(&mut f, chunks[1]);
+                        } else {
+                            Tabs::default()
+                                .block(block.clone())
+                                .titles(&self.coins.get_symbols())
+                                .select(self.coins.index)
+                                .style(Style::default().fg(Color::Cyan))
+                                .highlight_style(Style::default().fg(Color::Yellow))
+                                .render(&mut f, chunks[1]);
+                            match &self.coin_detail {
+                                Some(detail) => {
+                                    Paragraph::new(
+                                        vec![
+                                            Text::raw(detail.name.as_str()),
+                                            Text::raw(": "),
+                                            Text::raw(detail.symbol.as_str()),
+                                        ]
+                                        .iter(),
+                                    )
+                                    .block(block.clone())
+                                    .alignment(Alignment::Left)
+                                    .render(&mut f, chunks[2]);
+                                }
+                                None => {
+                                    Paragraph::new(vec![Text::raw("loading detail...")].iter())
+                                        .block(block.clone())
+                                        .alignment(Alignment::Left)
+                                        .render(&mut f, chunks[2]);
+                                }
+                            }
+                        }
                     }
                     ViewState::Detail => {
                         // TODO: Create a factory to render a headline
@@ -133,18 +172,12 @@ impl<'a> App<'a> {
     pub fn run(&mut self) -> AppResult<()> {
         let mut terminal = self.init_terminal()?;
         self.render(&mut terminal)?;
-
-        // FIXME: Remove delay, just for debugging ui
-        thread::sleep(Duration::from_millis(2000));
         let coins = self.get_coins()?;
-        self.coins = Some(Coins::new(coins));
+        self.coins = Coins::new(coins);
         self.view_state = ViewState::List;
-        // FIXME: Remove delay + render, just for debugging ui
         self.render(&mut terminal)?;
-        thread::sleep(Duration::from_millis(2000));
         let detail = self.get_current_coin_detail()?;
         self.coin_detail = Some(detail);
-        self.view_state = ViewState::Detail;
         // info!("{:?}", self);
 
         let inp_channel = InputChannel::new();
@@ -156,12 +189,23 @@ impl<'a> App<'a> {
                     InputEvent::Exit => {
                         break;
                     }
-                    InputEvent::InputKey(_) => {}
+                    InputEvent::InputKey(key) => match key {
+                        Key::Right => {
+                            &self.coins.next();
+                            let detail = self.get_current_coin_detail()?;
+                            self.coin_detail = Some(detail);
+                        }
+                        Key::Left => {
+                            &self.coins.prev();
+                            let detail = self.get_current_coin_detail()?;
+                            self.coin_detail = Some(detail);
+                        }
+                        _ => {}
+                    },
                 },
                 Err(_) => eprintln!("Error to get InputEvent"),
             }
         }
-
         Ok(())
     }
 }

@@ -16,12 +16,13 @@ extern crate derive_builder;
 extern crate failure;
 
 mod app;
+
 use clap::{App, Arg};
 
 fn main() {
     env_logger::init();
 
-    let matches = App::new("WTCH-CRPTS")
+    let matches = App::new(crate_name!())
         .about(crate_description!())
         .author(crate_authors!())
         .version(crate_version!())
@@ -57,8 +58,9 @@ fn main() {
         .collect();
 
     let mut app = app::App::new(app::config::Config::new(cryptos, fiat, is_development));
-    match app.run() {
-        Ok(_) => println!("App is running successfully ..."),
-        Err(e) => eprintln!("Ooops, something went wrong: {}", e),
-    }
+    let msg = match app.run() {
+        Ok(_) => String::from("Goodbye !"),
+        Err(e) => format!("Ooops, something went wrong: {}", e),
+    };
+    println!("{}", msg);
 }
