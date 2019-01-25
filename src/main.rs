@@ -28,20 +28,26 @@ fn main() {
         .version(crate_version!())
         .args(&[
             Arg::with_name("cryptocurrencies")
-                .help("Cryptocurrency to watch, e.g. BTC. Multiple values can be added by using ',' as a delimiter, eg. BTC,ETH,LTC")
+                .help("Cryptocurrency to watch, e.g. BTC. Multiple values are possible to add using ',' as a delimiter, eg. BTC,ETH,LTC")
                 .short("c")
                 .long("cryptos")
                 .use_delimiter(true)
                 .multiple(true)
                 .default_value("BTC"),
             Arg::with_name("fiat")
-                .help("Fiat currency for rating cryptocurrencies, e.g. EUR")
+                .help("Fiat currency to compare with, e.g. EUR")
                 .short("f")
                 .long("fiat")
                 .default_value("USD")
                 .possible_values(&app::constants::FIAT_LIST),
+            Arg::with_name("api provider")
+                .help("Api provider, which supports public endpoints to get data of cryptocurrencies. Currently supported is just CoinMarketCap, but more will be added soon...")
+                .short("p")
+                .long("provider")
+                .default_value(&app::constants::API_PROVIDERS[0])
+                .possible_values(&app::constants::API_PROVIDERS),
             Arg::with_name("dev")
-                .help("Fiat currency for rating cryptocurrencies, e.g. EUR")
+                .help("Flag to run app in development mode. This might be helpful to serve mock data.")
                 .short("d")
                 .long("development")
                 .default_value("false")
@@ -57,9 +63,15 @@ fn main() {
         .expect("One or more cryptocurrency has to be set")
         .collect();
 
-    let mut app = app::App::new(app::config::Config::new(cryptos, fiat, is_development));
+    let api_value = matches.value_of("api provider").expect("A API provider has to be defined");
+    let api = match api_value {
+        "coinmarketcap" => app::api::coinmarketcap::CoinMarketCap::new(is_development),
+        _ => panic!("Provider {} is not supported ", api_value), // `clap` already catch this, so it will never happen
+    };
+
+    let mut app = app::App::new(app::config::Config::new(cryptos, fiat, is_development, api));
     let msg = match app.run() {
-        Ok(_) => String::from("Goodbye !"),
+        Ok(_) => String::from("Goodbye!"),
         Err(e) => format!("Ooops, something went wrong: {}", e),
     };
     println!("{}", msg);

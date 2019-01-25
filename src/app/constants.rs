@@ -1,10 +1,3 @@
-// TODO: Parameterize live / local endpoints
-// pub const URL_QUOTES: &str = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest";
-pub const URL_QUOTES: &str = "http://localhost:3000/quotes";
-
-// pub const URL_MAP: &str = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/map";
-pub const URL_MAP: &str = "http://localhost:3000/map";
-
 // FIAT list supported by coinmarketcap
 // https://coinmarketcap.com/api/documentation/v1/#section/Standards-and-Conventions
 pub const FIAT_LIST: [&str; 93] = [
@@ -15,3 +8,6 @@ pub const FIAT_LIST: [&str; 93] = [
     "PKR", "PAB", "PEN", "PHP", "PLN", "GBP", "QAR", "RON", "RUB", "SAR", "RSD", "SGD", "ZAR", "KRW", "SSP", "VES",
     "LKR", "SEK", "CHF", "THB", "TTD", "TND", "TRY", "UGX", "UAH", "AED", "UYU", "UZS", "VND",
 ];
+
+// Api providers supporting public endpoints to get crypto data
+pub const API_PROVIDERS: [&str; 1] = ["coinmarketcap"];

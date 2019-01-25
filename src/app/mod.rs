@@ -1,4 +1,4 @@
-mod api;
+pub mod api;
 pub mod config;
 pub mod constants;
 pub mod env;
@@ -6,7 +6,7 @@ mod errors;
 mod input;
 mod types;
 
-use self::api::{fetch_coins, fetch_detail};
+use self::api::{Api};
 use self::config::Config;
 use self::errors::AppError;
 use self::input::{InputChannel, InputEvent};
@@ -19,8 +19,6 @@ extern crate termion;
 extern crate tui;
 
 use std::io;
-use std::thread;
-use std::time::Duration;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
@@ -28,9 +26,9 @@ use tui::layout::{Alignment, Constraint, Direction, Layout};
 use tui::widgets::{Block, Borders, Paragraph, Tabs, Text, Widget};
 use tui::Terminal;
 
-pub struct App<'a> {
+pub struct App<'a, T> {
     #[derive(Debug)]
-    env: Config<'a>,
+    config: Config<'a, T>,
     coins: Coins,
     coin_detail: Option<CoinDetail>,
     view_state: ViewState,
@@ -43,10 +41,10 @@ pub enum ViewState {
     Detail,
 }
 
-impl<'a> App<'a> {
-    pub fn new(env: Config<'a>) -> Self {
+impl<'a, T: Api> App<'a, T> {
+    pub fn new(config: Config<'a, T>) -> Self {
         App {
-            env,
+            config,
             coins: Coins::default(),
             coin_detail: None,
             view_state: ViewState::Welcome,
@@ -67,13 +65,13 @@ impl<'a> App<'a> {
     }
 
     fn get_coins(&mut self) -> AppResult<CoinList> {
-        let result = fetch_coins()?;
+        let result = self.config.api.get_coins()?;
         let coins: CoinList = result
             .into_iter()
-            .filter(|coin| self.env.crypto_symbols.contains(&coin.symbol.as_str()))
+            .filter(|coin| self.config.crypto_symbols.contains(&coin.symbol.as_str()))
             .collect();
         if coins.is_empty() {
-            // Paaaanic.... Just because we do need at least one supported crypto to run the app
+            // Paaaanic.... We do need at least one supported crypto to run the app
             panic!(format!("Cryptocurrencies {:?} are not supported", coins))
         } else {
             Ok(coins)
@@ -82,7 +80,7 @@ impl<'a> App<'a> {
 
     fn get_current_coin_detail(&mut self) -> AppResult<CoinDetail> {
         if let Some(coin) = &self.get_current_coin() {
-            fetch_detail(&coin.symbol, &self.env.fiat_symbol)
+            self.config.api.get_coin_detail(&coin.symbol, &self.config.fiat_symbol)
         } else {
             Err(AppError::CurrentCoinMissing())
         }
