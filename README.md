@@ -1,8 +1,26 @@
-## ... _still WIP_ ...
+# wtch-crpts (wɒtʃ ˈkrɪptəʊz) ~~~ >>> ~~~ `watch cryptos`
 
-# wtch-crpts (wɒtʃ ˈkrɪptəʊz) 
+`wtch-crpts` is a _**personal | funny | playground | [Rust](https://www.rust-lang.org/) | thing**_ I started at the holidays back in December 2018. Its goal was just to dive into [Rust](https://www.rust-lang.org/) by covering _**common Rust stuff and libraries**_ - that's why the code might not make sense in all cases...
 
-## _or just `watch cryptos`_
+_**common stuff**_
+
+- [Ownership, References, Borrowing](https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html)
+- [Generics, Traits, Lifetimes](https://doc.rust-lang.org/book/ch10-00-generics.html)
+- [Error Handling](https://doc.rust-lang.org/book/ch09-00-error-handling.html)
+- [Testing](https://doc.rust-lang.org/book/ch11-00-testing.html)
+- [Concurrency, Threads](https://doc.rust-lang.org/book/ch16-01-threads.html)
+- [Builder pattern](https://github.com/rust-unofficial/patterns/blob/master/patterns/builder.md)
+- etc.
+
+_**libs**_
+
+- [fail](https://crates.io/crates/fail) - A fail point implementation for Rust.
+- [dotenv](https://crates.io/crates/dotenv) - A `dotenv` implementation for Rust
+- [clap](https://crates.io/crates/clap) - Command Line Argument Parser for Rust
+- [tui](https://crates.io/crates/tui) A library to build rich terminal user interfaces or dashboards 
+- [derive_builder](https://crates.io/crates/derive_builder) Rust macro to automatically implement the builder pattern for arbitrary structs.
+- [serde](https://crates.io/crates/serde) - Serializing and deserializing Rust data structures efficiently and generically
+- etc.
 
 ## Requirements
 

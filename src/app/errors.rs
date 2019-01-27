@@ -10,8 +10,6 @@ pub enum AppError {
     ApiParseUrl(#[cause] reqwest::UrlError),
     #[fail(display = "Failed to parse value of {} from list", key)]
     ApiParseMap { key: String },
-    #[fail(display = "Current coin does not exist")]
-    CurrentCoinMissing(),
     #[fail(display = "Terminal IO error {:?}", _0)]
     Terminal(#[cause] std::io::Error),
 }

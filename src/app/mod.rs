@@ -6,13 +6,19 @@ mod errors;
 mod input;
 mod types;
 
-use self::api::{Api};
-use self::config::Config;
-use self::errors::AppError;
-use self::input::{InputChannel, InputEvent};
-use self::types::{AppResult, AppTerminal, Coin, CoinDetail, CoinList, Coins};
+use self::{
+    api::{Api},
+    config::Config,
+    errors::AppError,
+    input::{InputChannel, InputEvent},
+    types::{AppResult, AppTerminal, Coins},
+};
+
 use termion::event::Key;
-use tui::style::{Color, Style};
+use tui::{
+    style::{Color, Style},
+    widgets::{Table, Row},
+};
 
 extern crate failure;
 extern crate termion;
@@ -23,14 +29,12 @@ use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use tui::backend::TermionBackend;
 use tui::layout::{Alignment, Constraint, Direction, Layout};
-use tui::widgets::{Block, Borders, Paragraph, Tabs, Text, Widget};
+use tui::widgets::{Block, Borders, Paragraph, Text, Widget};
 use tui::Terminal;
 
 pub struct App<'a, T> {
-    #[derive(Debug)]
     config: Config<'a, T>,
-    coins: Coins,
-    coin_detail: Option<CoinDetail>,
+    coins: Option<Coins>,
     view_state: ViewState,
 }
 
@@ -38,15 +42,13 @@ pub struct App<'a, T> {
 pub enum ViewState {
     Welcome,
     List,
-    Detail,
 }
 
 impl<'a, T: Api> App<'a, T> {
     pub fn new(config: Config<'a, T>) -> Self {
         App {
             config,
-            coins: Coins::default(),
-            coin_detail: None,
+            coins: None,
             view_state: ViewState::Welcome,
         }
     }
@@ -60,31 +62,19 @@ impl<'a, T: Api> App<'a, T> {
         Ok(terminal)
     }
 
-    fn get_current_coin(&self) -> Option<Coin> {
-        self.coins.current()
-    }
-
-    fn get_coins(&mut self) -> AppResult<CoinList> {
-        let result = self.config.api.get_coins()?;
-        let coins: CoinList = result
-            .into_iter()
-            .filter(|coin| self.config.crypto_symbols.contains(&coin.symbol.as_str()))
-            .collect();
-        if coins.is_empty() {
-            // Paaaanic.... We do need at least one supported crypto to run the app
-            panic!(format!("Cryptocurrencies {:?} are not supported", coins))
-        } else {
-            Ok(coins)
-        }
-    }
-
-    fn get_current_coin_detail(&mut self) -> AppResult<CoinDetail> {
-        if let Some(coin) = &self.get_current_coin() {
-            self.config.api.get_coin_detail(&coin.symbol, &self.config.fiat_symbol)
-        } else {
-            Err(AppError::CurrentCoinMissing())
-        }
-    }
+    // fn get_coins(&mut self) -> AppResult<CoinList> {
+    //     let result = self.config.api.get_coins()?;
+    //     let coins: CoinList = result
+    //         .into_iter()
+    //         .filter(|coin| self.config.crypto_symbols.contains(&coin.symbol.as_str()))
+    //         .collect();
+    //     if coins.is_empty() {
+    //         // Paaaanic.... We do need at least one supported crypto to run the app
+    //         panic!(format!("Cryptocurrencies {:?} are not supported", coins))
+    //     } else {
+    //         Ok(coins)
+    //     }
+    // }
 
     fn render(&mut self, terminal: &mut AppTerminal) -> AppResult<()> {
         let size = terminal.size().map_err(AppError::Terminal)?;
@@ -95,16 +85,16 @@ impl<'a, T: Api> App<'a, T> {
                     .borders(Borders::ALL)
                     .render(&mut f, size);
 
-                let chunks = Layout::default()
+                let rects = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints(
                         [
+                            Constraint::Percentage(90),
                             Constraint::Percentage(10),
-                            Constraint::Percentage(10),
-                            Constraint::Min(0),
                         ]
                         .as_ref(),
                     )
+                    .margin(2)
                     .split(size);
 
                 let block = Block::default().borders(Borders::NONE);
@@ -114,51 +104,41 @@ impl<'a, T: Api> App<'a, T> {
                         Paragraph::new(vec![Text::raw("Welcome")].iter())
                             .block(block.clone())
                             .alignment(Alignment::Left)
-                            .render(&mut f, chunks[1]);
+                            .render(&mut f, rects[0]);
                     }
                     ViewState::List => {
-                        if self.coins.list.is_empty() {
-                            Paragraph::new(vec![Text::raw("No coins available")].iter())
-                                .block(block.clone())
-                                .alignment(Alignment::Left)
-                                .render(&mut f, chunks[1]);
-                        } else {
-                            Tabs::default()
-                                .block(block.clone())
-                                .titles(&self.coins.get_symbols())
-                                .select(self.coins.index)
-                                .style(Style::default().fg(Color::Cyan))
-                                .highlight_style(Style::default().fg(Color::Yellow))
-                                .render(&mut f, chunks[1]);
-                            match &self.coin_detail {
-                                Some(detail) => {
-                                    Paragraph::new(
-                                        vec![
-                                            Text::raw(detail.name.as_str()),
-                                            Text::raw(": "),
-                                            Text::raw(detail.symbol.as_str()),
-                                        ]
-                                        .iter(),
-                                    )
-                                    .block(block.clone())
-                                    .alignment(Alignment::Left)
-                                    .render(&mut f, chunks[2]);
-                                }
-                                None => {
-                                    Paragraph::new(vec![Text::raw("loading detail...")].iter())
-                                        .block(block.clone())
-                                        .alignment(Alignment::Left)
-                                        .render(&mut f, chunks[2]);
-                                }
-                            }
+                        if let Some(coins) = &self.coins {
+                            let mut rows = Vec::new();
+                            let normal_style =  Style::default().fg(Color::Black);
+                            let selected_style =  Style::default().fg(Color::Yellow);
+                            for coin in &coins.list {
+                                let quote = match &coin.quote {
+                                    None => "-".into(),
+                                    Some(q) => q.to_string()
+                                };
+                                let name = &coin.name;
+                                let symbol = &coin.symbol;
+                                let row = vec![name.clone(), symbol.clone(), quote.clone()].into_iter();
+                                let style = match coins.current() {
+                                    Some(current) => if current.symbol == coin.symbol {
+                                        selected_style
+                                    } else {
+                                        normal_style
+                                    },
+                                    None => normal_style
+                                };
+                                rows.push(Row::StyledData(row, style));
+                            };
+
+                            Table::new(
+                                ["coin", "symbol", self.config.fiat_symbol].into_iter(),
+                                rows.into_iter()
+                            )
+                            .block(Block::default().borders(Borders::NONE))
+                            .column_spacing(1)
+                            .widths(&[10, 10, 10])
+                            .render(&mut f, rects[0]);
                         }
-                    }
-                    ViewState::Detail => {
-                        // TODO: Create a factory to render a headline
-                        Paragraph::new(vec![Text::raw("Detail")].iter())
-                            .block(block.clone())
-                            .alignment(Alignment::Left)
-                            .render(&mut f, chunks[1]);
                     }
                 }
             })
@@ -169,13 +149,13 @@ impl<'a, T: Api> App<'a, T> {
 
     pub fn run(&mut self) -> AppResult<()> {
         let mut terminal = self.init_terminal()?;
-        self.render(&mut terminal)?;
-        let coins = self.get_coins()?;
-        self.coins = Coins::new(coins);
+        // self.render(&mut terminal)?;
+        // let coins = self.get_coins()?;
+        // self.coins = Coins::new(coins);
         self.view_state = ViewState::List;
         self.render(&mut terminal)?;
-        let detail = self.get_current_coin_detail()?;
-        self.coin_detail = Some(detail);
+        let coins = self.config.api.get_coin_details(&self.config.crypto_symbols, &self.config.fiat_symbol)?;
+        self.coins = Some(coins);
         // info!("{:?}", self);
 
         let inp_channel = InputChannel::new();
@@ -188,15 +168,17 @@ impl<'a, T: Api> App<'a, T> {
                         break;
                     }
                     InputEvent::InputKey(key) => match key {
-                        Key::Right => {
-                            &self.coins.next();
-                            let detail = self.get_current_coin_detail()?;
-                            self.coin_detail = Some(detail);
+                        Key::Up => {
+                            if let Some(coins) = &mut self.coins {
+                                &coins.next();
+                                ()
+                            }
                         }
-                        Key::Left => {
-                            &self.coins.prev();
-                            let detail = self.get_current_coin_detail()?;
-                            self.coin_detail = Some(detail);
+                        Key::Down => {
+                            if let Some(coins) = &mut self.coins {
+                                &coins.prev();
+                                ()
+                            }
                         }
                         _ => {}
                     },

@@ -14,6 +14,7 @@ pub enum InputEvent {
 
 pub struct InputChannel {
     pub rx: mpsc::Receiver<InputEvent>,
+    #[allow(dead_code)]
     handle: thread::JoinHandle<()>,
 }
 
