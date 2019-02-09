@@ -4,41 +4,45 @@ use std::collections::HashMap;
 
 use super::Api;
 use crate::app::{
-    env::{get_env, ENV_COINMARKETCAP_KEY, HEADER_COINMARKETCAP_KEY},
+    env::{get_env},
     errors::AppError,
-    types::{AppResult, Coin, Coins}
+    types::{AppResult, Coins},
+    types
 };
 
 
-pub type CMCCoinList = Vec<CMCCoin>;
+const HEADER_COINMARKETCAP_KEY: &str = "X-CMC_PRO_API_KEY";
+const ENV_COINMARKETCAP_KEY: &str = "COINMARKETCAP_KEY";
+
+type CoinList = Vec<Coin>;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct CMCCoinListData {
+struct CoinListData {
     #[serde(rename = "data")]
-    pub coins: CMCCoinList,
+    pub coins: CoinList,
 }
 
-pub type CMCCoinDetailMap = HashMap<String, CMCCoin>;
+type CoinDetailMap = HashMap<String, Coin>;
 
 #[derive(Serialize, Debug, Deserialize, PartialEq)]
-pub struct CMCQuoteData {
+struct QuoteData {
     #[serde(rename = "data")]
-    pub details: CMCCoinDetailMap,
+    pub details: CoinDetailMap,
 }
 
-pub type CMCQuoteMap = HashMap<String, CMCQuote>;
+type QuoteMap = HashMap<String, Quote>;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct CMCCoin {
+pub struct Coin {
     pub id: i32,
     pub name: String,
     pub symbol: String,
     #[serde(rename = "quote")]
-    pub quotes: CMCQuoteMap,
+    quotes: QuoteMap,
 }
 
 #[derive(Serialize, Debug, Deserialize, Clone, PartialEq)]
-pub struct CMCQuote {
+struct Quote {
     pub price: f32,
     pub volume_24h: f32,
 }
@@ -59,7 +63,7 @@ impl CoinMarketCap {
 
 impl Api for CoinMarketCap {
 
-    type ApiCoin = CMCCoin;
+    type ApiCoin = Coin;
 
     fn get_endpoint(&self) -> &str {
         if self.is_development { 
@@ -69,8 +73,8 @@ impl Api for CoinMarketCap {
         }
     }
 
-    fn to_coin(&self, api_coin: &Self::ApiCoin, fiat: &str) -> Coin {
-        Coin {
+    fn to_coin(&self, api_coin: &Self::ApiCoin, fiat: &str) -> types::Coin {
+        types::Coin {
             name: api_coin.name.to_owned(),
             symbol: api_coin.symbol.to_owned(),
             quote: api_coin.quotes.get(fiat).map(|q| q.price),
@@ -108,7 +112,7 @@ impl Api for CoinMarketCap {
 
             info!("fetch detail url {}", url);
 
-            let data: CMCQuoteData = self.client
+            let data: QuoteData = self.client
                     .get(url)
                     .header(HEADER_COINMARKETCAP_KEY, key.to_owned())
                     .send()
@@ -142,6 +146,7 @@ mod tests {
     use super::*;
     use serde_json::json;
     use crate::app::types::{CoinBuilder};
+    use crate::app::types;
 
     #[test]
     fn deserialize_cmc_coins() {
@@ -159,35 +164,35 @@ mod tests {
                 }
             }
         }});
-        let result: CMCQuoteData = serde_json::from_value(json).unwrap();
-        let quote: CMCQuote = CMCQuote {
+        let result: QuoteData = serde_json::from_value(json).unwrap();
+        let quote: Quote = Quote {
             price: 1.0,
             volume_24h: 2.0,
         };
-        let mut quotes: CMCQuoteMap = HashMap::new();
+        let mut quotes: QuoteMap = HashMap::new();
         quotes.insert("EUR".into(), quote.clone());
-        let detail: CMCCoin = CMCCoin {
+        let detail: Coin = Coin {
             id: 1,
             name: "Bitcoin".into(),
             symbol: "BTC".into(),
             quotes,
         };
-        let mut details: CMCCoinDetailMap = HashMap::new();
+        let mut details: CoinDetailMap = HashMap::new();
         details.insert("BTC".into(), detail.clone());
-        let expected: CMCQuoteData = CMCQuoteData { details };
+        let expected: QuoteData = QuoteData { details };
 
         assert_eq!(result, expected)
     }
 
     #[test]
     fn to_coin() {
-        let quote: CMCQuote = CMCQuote {
+        let quote: Quote = Quote {
             price: 1.1,
             volume_24h: 2.2,
         };
-        let mut quotes: CMCQuoteMap = HashMap::new();
+        let mut quotes: QuoteMap = HashMap::new();
         quotes.insert("EUR".into(), quote.clone());
-        let api_coin: CMCCoin = CMCCoin {
+        let api_coin: Coin = Coin {
             id: 1,
             name: "Bitcoin".into(),
             symbol: "BTC".into(),
@@ -196,7 +201,7 @@ mod tests {
 
         let cmc = CoinMarketCap::new(false); 
         let result = cmc.to_coin(&api_coin, &"EUR"); 
-        let expected: Coin = CoinBuilder::default()
+        let expected: types::Coin = CoinBuilder::default()
                                 .name("Bitcoin")
                                 .symbol("BTC")
                                 .quote(Some(1.1))
