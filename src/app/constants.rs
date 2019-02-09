@@ -10,4 +10,7 @@ pub const FIAT_LIST: [&str; 93] = [
 ];
 
 // Api providers supporting public endpoints to get crypto data
-pub const API_PROVIDERS: [&str; 1] = ["coinmarketcap"];
+pub const API_PROVIDERS: [&str; 2] = [
+    "coinmarketcap", 
+    "cryptocompare"
+];

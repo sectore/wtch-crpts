@@ -1,6 +1,6 @@
-# wtch-crpts (wɒtʃ ˈkrɪptəʊz) ~~~ >>> ~~~ `watch cryptos`
+# wtch-crpts (wɒtʃ ˈkrɪptəʊz)
 
-`wtch-crpts` is a _**personal | funny | playground | [Rust](https://www.rust-lang.org/) | thing**_ I started at the holidays back in December 2018. Its goal was just to dive into [Rust](https://www.rust-lang.org/) by covering _**common Rust stuff and libraries**_ - that's why the code might not make sense in all cases...
+`wtch-crpts` was intended to be a _personal [Rust](https://www.rust-lang.org/) playground thing_ I started during my holidays back in January 2019. The main goal was to dive into [Rust](https://www.rust-lang.org/) by covering _common Rust stuff and libraries_. That's why the code might not make sense in all cases... 
 
 _**common stuff**_
 

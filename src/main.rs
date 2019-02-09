@@ -66,6 +66,8 @@ fn main() {
     let api_value = matches.value_of("api provider").expect("A API provider has to be defined");
     let api = match api_value {
         "coinmarketcap" => app::api::coinmarketcap::CoinMarketCap::new(is_development),
+        // FIXME: `match arms have incompatible types`
+        // "cryptocompare" => app::api::cryptocompare::CryptoCompare::new(is_development),
         _ => panic!("Provider {} is not supported ", api_value), // `clap` already catch this, so it will never happen
     };
 

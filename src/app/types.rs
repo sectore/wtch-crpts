@@ -9,10 +9,11 @@ use super::errors::AppError;
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Builder, Default)]
 #[builder(default, setter(into))]
 pub struct Coin {
-    pub name: String,
     #[builder(setter(into))]
     pub symbol: String,
     pub quote: Option<f32>,
+    pub percent_change_24h: Option<f32>,
+    pub market_cap: Option<f32>,
 }
 
 pub type CoinList = Vec<Coin>;
@@ -74,9 +75,9 @@ mod tests {
 
     #[test]
     fn coins_next() {
-        let coin_a: Coin = CoinBuilder::default().name("a").build().unwrap();
-        let coin_b: Coin = CoinBuilder::default().name("b").build().unwrap();
-        let coin_c: Coin = CoinBuilder::default().name("c").build().unwrap();
+        let coin_a: Coin = CoinBuilder::default().symbol("a").build().unwrap();
+        let coin_b: Coin = CoinBuilder::default().symbol("b").build().unwrap();
+        let coin_c: Coin = CoinBuilder::default().symbol("c").build().unwrap();
         let mut coins: Coins = Coins::new(vec![coin_a.clone(), coin_b.clone(), coin_c.clone()]);
         assert_eq!(coins.current(), Some(coin_a.clone()));
         coins.next();
@@ -88,9 +89,9 @@ mod tests {
     }
     #[test]
     fn coins_prev() {
-        let coin_a: Coin = CoinBuilder::default().name("a").build().unwrap();
-        let coin_b: Coin = CoinBuilder::default().name("b").build().unwrap();
-        let coin_c: Coin = CoinBuilder::default().name("c").build().unwrap();
+        let coin_a: Coin = CoinBuilder::default().symbol("a").build().unwrap();
+        let coin_b: Coin = CoinBuilder::default().symbol("b").build().unwrap();
+        let coin_c: Coin = CoinBuilder::default().symbol("c").build().unwrap();
         let mut coins: Coins = Coins::new(vec![coin_a.clone(), coin_b.clone(), coin_c.clone()]);
         assert_eq!(coins.current(), Some(coin_a.clone()));
         coins.prev();

@@ -14,14 +14,6 @@ use crate::app::{
 const HEADER_COINMARKETCAP_KEY: &str = "X-CMC_PRO_API_KEY";
 const ENV_COINMARKETCAP_KEY: &str = "COINMARKETCAP_KEY";
 
-type CoinList = Vec<Coin>;
-
-#[derive(Serialize, Deserialize, Debug)]
-struct CoinListData {
-    #[serde(rename = "data")]
-    pub coins: CoinList,
-}
-
 type CoinDetailMap = HashMap<String, Coin>;
 
 #[derive(Serialize, Debug, Deserialize, PartialEq)]
@@ -45,6 +37,8 @@ pub struct Coin {
 struct Quote {
     pub price: f32,
     pub volume_24h: f32,
+    pub percent_change_24h: f32,
+    pub market_cap: f32,
 }
 
 pub struct CoinMarketCap {
@@ -75,30 +69,12 @@ impl Api for CoinMarketCap {
 
     fn to_coin(&self, api_coin: &Self::ApiCoin, fiat: &str) -> types::Coin {
         types::Coin {
-            name: api_coin.name.to_owned(),
             symbol: api_coin.symbol.to_owned(),
             quote: api_coin.quotes.get(fiat).map(|q| q.price),
+            percent_change_24h: api_coin.quotes.get(fiat).map(|q| q.percent_change_24h),
+            market_cap: api_coin.quotes.get(fiat).map(|q| q.market_cap),
         }
     }
-
-    // fn get_coins(&self) -> AppResult<CoinList> {
-    //         info!("fetch coins");
-    //         // TODO: Parameterize "limit"
-    //         let params = [("start", "1"), ("limit", "20")];
-    //         let endpoint = format!("{}/map", self.get_endpoint());
-    //         let url = Url::parse_with_params(&endpoint, &params).map_err(AppError::ApiParseUrl)?;
-    //         let key = get_env(ENV_COINMARKETCAP_KEY)?
-
-    //         info!("fetch coins url {}", url);
-
-    //         self.client.get(url)
-    //                 .header(HEADER_COINMARKETCAP_KEY, key)
-    //                 .send()
-    //                 .map_err(AppError::ApiRequest)?
-    //                 .json()
-    //                 .map_err(AppError::ApiRequest)
-    //                 .map(|d: CoinListData| d.coins)
-    // }
 
     fn get_coin_details(&self, symbols: &[&str], fiat: &str) -> AppResult<Coins> {
             let params = [("symbol", symbols.join(",")), ("convert", fiat.into())];
@@ -160,6 +136,8 @@ mod tests {
                     "EUR": {
                         "price": 1.0,
                         "volume_24h": 2.0,
+                        "percent_change_24h": 50.0,
+                        "market_cap": 200.0,
                     }
                 }
             }
@@ -168,6 +146,8 @@ mod tests {
         let quote: Quote = Quote {
             price: 1.0,
             volume_24h: 2.0,
+            percent_change_24h: 50.0,
+            market_cap: 200.0,
         };
         let mut quotes: QuoteMap = HashMap::new();
         quotes.insert("EUR".into(), quote.clone());
@@ -189,6 +169,8 @@ mod tests {
         let quote: Quote = Quote {
             price: 1.1,
             volume_24h: 2.2,
+            percent_change_24h: 55.0,
+            market_cap: 222.0,
         };
         let mut quotes: QuoteMap = HashMap::new();
         quotes.insert("EUR".into(), quote.clone());
@@ -202,9 +184,10 @@ mod tests {
         let cmc = CoinMarketCap::new(false); 
         let result = cmc.to_coin(&api_coin, &"EUR"); 
         let expected: types::Coin = CoinBuilder::default()
-                                .name("Bitcoin")
                                 .symbol("BTC")
                                 .quote(Some(1.1))
+                                .percent_change_24h(Some(55.0))
+                                .market_cap(Some(222.0))
                                 .build()
                                 .unwrap();
 

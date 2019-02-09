@@ -62,20 +62,6 @@ impl<'a, T: Api> App<'a, T> {
         Ok(terminal)
     }
 
-    // fn get_coins(&mut self) -> AppResult<CoinList> {
-    //     let result = self.config.api.get_coins()?;
-    //     let coins: CoinList = result
-    //         .into_iter()
-    //         .filter(|coin| self.config.crypto_symbols.contains(&coin.symbol.as_str()))
-    //         .collect();
-    //     if coins.is_empty() {
-    //         // Paaaanic.... We do need at least one supported crypto to run the app
-    //         panic!(format!("Cryptocurrencies {:?} are not supported", coins))
-    //     } else {
-    //         Ok(coins)
-    //     }
-    // }
-
     fn render(&mut self, terminal: &mut AppTerminal) -> AppResult<()> {
         let size = terminal.size().map_err(AppError::Terminal)?;
         terminal
@@ -116,9 +102,8 @@ impl<'a, T: Api> App<'a, T> {
                                     None => "-".into(),
                                     Some(q) => q.to_string()
                                 };
-                                let name = &coin.name;
                                 let symbol = &coin.symbol;
-                                let row = vec![name.clone(), symbol.clone(), quote.clone()].into_iter();
+                                let row = vec![symbol.clone(), quote.clone()].into_iter();
                                 let style = match coins.current() {
                                     Some(current) => if current.symbol == coin.symbol {
                                         selected_style
@@ -149,9 +134,6 @@ impl<'a, T: Api> App<'a, T> {
 
     pub fn run(&mut self) -> AppResult<()> {
         let mut terminal = self.init_terminal()?;
-        // self.render(&mut terminal)?;
-        // let coins = self.get_coins()?;
-        // self.coins = Coins::new(coins);
         self.view_state = ViewState::List;
         self.render(&mut terminal)?;
         let coins = self.config.api.get_coin_details(&self.config.crypto_symbols, &self.config.fiat_symbol)?;
