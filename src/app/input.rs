@@ -26,21 +26,19 @@ impl InputChannel {
             thread::spawn(move || {
                 let stdin = io::stdin();
                 for evt in stdin.keys() {
-                    match evt {
-                        Ok(key) => {
+                    if let Ok(key) = evt {
                             let inp_event = if key == Key::Char('q') {
                                 InputEvent::Exit
                             } else {
                                 InputEvent::InputKey(key)
                             };
-                            if let Err(_) = tx.send(inp_event) {
+                            if tx.send(inp_event).is_err() {
                                 return;
                             }
                         }
-                        Err(_) => {}
                     }
                 }
-            })
+            )
         };
         InputChannel { rx, handle }
     }

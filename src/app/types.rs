@@ -29,7 +29,7 @@ impl Coins {
     }
 
     pub fn current(&self) -> Option<Coin> {
-        self.list.get(self.index).map(|x| x.clone())
+        self.list.get(self.index).cloned()
     }
 
     #[allow(dead_code)]

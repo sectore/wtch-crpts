@@ -70,11 +70,11 @@ impl Api for CoinMarketCap {
     }
 
     fn to_coin(&self, api_coin: &Self::ApiCoin, fiat: &str) -> Coin {
-        return Coin {
+        Coin {
             name: api_coin.name.to_owned(),
             symbol: api_coin.symbol.to_owned(),
             quote: api_coin.quotes.get(fiat).map(|q| q.price),
-        };
+        }
     }
 
     // fn get_coins(&self) -> AppResult<CoinList> {
@@ -96,7 +96,7 @@ impl Api for CoinMarketCap {
     //                 .map(|d: CoinListData| d.coins)
     // }
 
-    fn get_coin_details(&self, symbols: &Vec<&str>, fiat: &str) -> AppResult<Coins> {
+    fn get_coin_details(&self, symbols: &[&str], fiat: &str) -> AppResult<Coins> {
             let params = [("symbol", symbols.join(",")), ("convert", fiat.into())];
             let endpoint = if self.is_development {
                     format!("{}/quotes", self.get_endpoint())

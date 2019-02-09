@@ -102,7 +102,7 @@ impl<'a, T: Api> App<'a, T> {
                     ViewState::Welcome => {
                         // TODO: Create a factory to render a headline
                         Paragraph::new(vec![Text::raw("Welcome")].iter())
-                            .block(block.clone())
+                            .block(block)
                             .alignment(Alignment::Left)
                             .render(&mut f, rects[0]);
                     }
@@ -131,7 +131,7 @@ impl<'a, T: Api> App<'a, T> {
                             };
 
                             Table::new(
-                                ["coin", "symbol", self.config.fiat_symbol].into_iter(),
+                                ["coin", "symbol", self.config.fiat_symbol].iter(),
                                 rows.into_iter()
                             )
                             .block(Block::default().borders(Borders::NONE))
@@ -170,14 +170,12 @@ impl<'a, T: Api> App<'a, T> {
                     InputEvent::InputKey(key) => match key {
                         Key::Up => {
                             if let Some(coins) = &mut self.coins {
-                                &coins.next();
-                                ()
+                                coins.next();
                             }
                         }
                         Key::Down => {
                             if let Some(coins) = &mut self.coins {
-                                &coins.prev();
-                                ()
+                                coins.prev();
                             }
                         }
                         _ => {}
