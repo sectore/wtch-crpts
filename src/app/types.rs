@@ -13,7 +13,7 @@ pub struct Coin {
     pub symbol: String,
     pub quote: Option<f32>,
     pub percent_change_24h: Option<f32>,
-    pub market_cap: Option<f32>,
+    pub market_cap: Option<f64>,
 }
 
 pub type CoinList = Vec<Coin>;

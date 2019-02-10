@@ -38,7 +38,7 @@ struct Quote {
     pub price: f32,
     pub volume_24h: f32,
     pub percent_change_24h: f32,
-    pub market_cap: f32,
+    pub market_cap: f64,
 }
 
 pub struct CoinMarketCap {
@@ -53,26 +53,24 @@ impl CoinMarketCap {
             is_development
         }
     }
+
+    fn to_coin(&self, api_coin: &Coin, fiat: &str) -> types::Coin {
+        types::Coin {
+            symbol: api_coin.symbol.to_owned(),
+            quote: api_coin.quotes.get(fiat).map(|q| q.price),
+            percent_change_24h: api_coin.quotes.get(fiat).map(|q| q.percent_change_24h),
+            market_cap: api_coin.quotes.get(fiat).map(|q| q.market_cap),
+        }
+    }
 }
 
 impl Api for CoinMarketCap {
-
-    type ApiCoin = Coin;
 
     fn get_endpoint(&self) -> &str {
         if self.is_development { 
             "http://localhost:3000"
         } else {
             "https://pro-api.coinmarketcap.com/v1/cryptocurrency"
-        }
-    }
-
-    fn to_coin(&self, api_coin: &Self::ApiCoin, fiat: &str) -> types::Coin {
-        types::Coin {
-            symbol: api_coin.symbol.to_owned(),
-            quote: api_coin.quotes.get(fiat).map(|q| q.price),
-            percent_change_24h: api_coin.quotes.get(fiat).map(|q| q.percent_change_24h),
-            market_cap: api_coin.quotes.get(fiat).map(|q| q.market_cap),
         }
     }
 

@@ -7,7 +7,6 @@ mod input;
 mod types;
 
 use self::{
-    api::{Api},
     config::Config,
     errors::AppError,
     input::{InputChannel, InputEvent},
@@ -32,8 +31,8 @@ use tui::layout::{Alignment, Constraint, Direction, Layout};
 use tui::widgets::{Block, Borders, Paragraph, Text, Widget};
 use tui::Terminal;
 
-pub struct App<'a, T> {
-    config: Config<'a, T>,
+pub struct App<'a> {
+    config: Config<'a>,
     coins: Option<Coins>,
     view_state: ViewState,
 }
@@ -44,8 +43,8 @@ pub enum ViewState {
     List,
 }
 
-impl<'a, T: Api> App<'a, T> {
-    pub fn new(config: Config<'a, T>) -> Self {
+impl<'a> App<'a> {
+    pub fn new(config: Config<'a>) -> Self {
         App {
             config,
             coins: None,

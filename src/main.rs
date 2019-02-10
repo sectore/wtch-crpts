@@ -17,6 +17,15 @@ extern crate failure;
 
 mod app;
 
+use app ::{
+    api::{
+        cryptocompare::{CryptoCompare},
+        coinmarketcap::{CoinMarketCap},
+        {Api},
+    },
+    config::Config
+};
+
 use clap::{App, Arg};
 
 fn main() {
@@ -65,13 +74,12 @@ fn main() {
 
     let api_value = matches.value_of("api provider").expect("A API provider has to be defined");
     let api = match api_value {
-        "coinmarketcap" => app::api::coinmarketcap::CoinMarketCap::new(is_development),
-        // FIXME: `match arms have incompatible types`
-        // "cryptocompare" => app::api::cryptocompare::CryptoCompare::new(is_development),
+        "coinmarketcap" => Box::new(CoinMarketCap::new(is_development)) as Box<Api>,
+        "cryptocompare" => Box::new(CryptoCompare::new(is_development)) as Box<Api>,
         _ => panic!("Provider {} is not supported ", api_value), // `clap` already catch this, so it will never happen
     };
 
-    let mut app = app::App::new(app::config::Config::new(cryptos, fiat, is_development, api));
+    let mut app = app::App::new(Config::new(cryptos, fiat, is_development, api));
     let msg = match app.run() {
         Ok(_) => String::from("Goodbye!"),
         Err(e) => format!("Ooops, something went wrong: {}", e),
